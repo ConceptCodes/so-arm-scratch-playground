@@ -334,6 +334,37 @@ export function useRobotControl(
     [jointStates, isConnected]
   );
 
+  const emergencyStop = useCallback(async () => {
+    if (isConnected) {
+      try {
+        // Disable torque for all servos
+        for (const joint of jointDetails) {
+          try {
+            await scsServoSDK.writeTorqueEnable(joint.servoId, false);
+          } catch (error) {
+            console.error(
+              `Failed to disable torque for joint ${joint.servoId}:`,
+              error
+            );
+          }
+        }
+        // Reset all joint states to "N/A"
+        const newStates = jointStates.map((state, idx) => ({
+          ...state,
+          degrees:
+            state.jointType === "revolute" ? initialPositions[idx] ?? 0 : 0,
+          speed: state.jointType === "continuous" ? 0 : 0,
+        }));
+        setJointStates(newStates);
+        console.log("Emergency stop executed successfully.");
+      } catch (error) {
+        console.error("Failed to execute emergency stop:", error);
+      }
+    } else {
+      console.warn("Cannot execute emergency stop, robot is not connected.");
+    }
+  }, [isConnected, jointDetails, jointStates, initialPositions, scsServoSDK]);
+
   return {
     isConnected,
     connectRobot,
@@ -345,5 +376,31 @@ export function useRobotControl(
     updateJointSpeed,
     updateJointsSpeed,
     setJointDetails,
+    emergencyStop,
   };
+}
+
+export function parseGeneratedCodeToCommands(
+  generatedCode: string,
+  jointDetails: JointDetails[]
+): { servoId: number; value: number }[] {
+  const commands: { servoId: number; value: number }[] = [];
+  const lines = generatedCode.split("\n");
+
+  for (const line of lines) {
+    const match = line.match(/updateJointDegrees\('(\w+)',\s*(\d+)\);/);
+    if (match) {
+      const jointName = match[1];
+      const value = parseFloat(match[2]);
+      const jointDetail = jointDetails.find((j) => j.name === jointName);
+      if (jointDetail) {
+        commands.push({
+          servoId: jointDetail.servoId,
+          value,
+        });
+      }
+    }
+  }
+
+  return commands;
 }

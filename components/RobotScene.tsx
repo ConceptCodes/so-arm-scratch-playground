@@ -62,7 +62,7 @@ export function RobotScene({
               )
               .map((joint) => ({
                 name: joint.name,
-                servoId: robotConfigMap[robotName].jointNameIdMap[joint.name],
+                servoId: robotConfigMap[robotName]?.jointNameIdMap?.[joint.name] ?? -1,
                 limit: {
                   lower:
                     joint.limit.lower === undefined
