@@ -1,27 +1,39 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import RobotLoader from "@/components/RobotLoader";
+import { JointDetails } from "@/components/RobotScene";
 
 import { useRobotControl } from "@/hooks/useRobotControl";
-import { useState } from "react";
-import { JointDetails } from "@/components/RobotScene";
 import { robotConfigMap } from "@/lib/robotConfig";
+import { registerRobotBlocks } from "@/components/blocks/robotBlocks";
+
+const BlocklyWorkspace = dynamic(
+  () => import("react-blockly").then((mod) => mod.BlocklyWorkspace),
+  { ssr: false }
+);
 
 export default function Home() {
-  const [jointDetails, setJointDetails] = useState<JointDetails[]>([]);
+  const [jointDetails, _] = useState<JointDetails[]>([]);
+  const [xml, setXml] = useState("");
+  const [workspace, setWorkspace] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("blocks");
+  const [generatedCode, setGeneratedCode] = useState("");
 
   // const handleExecuteProgram = (blocks: Block[]) => {
   //   // TODO: Implement block execution logic using robotControl
   //   // For now, do nothing
   // };
 
-  // const handleOnboardingComplete = () => {
+  // const handleOnboardingComplete= () => {
   //   setShowOnboarding(false);
   // };
 
@@ -32,6 +44,31 @@ export default function Home() {
     jointDetails,
     urdfInitJointAngles
   );
+
+  useEffect(() => {
+    registerRobotBlocks();
+  }, []);
+
+  // Generate code from workspace when switching to code tab
+  useEffect(() => {
+    if (activeTab === "code" && workspace) {
+      // @ts-ignore
+      const code = window.Blockly?.JavaScript?.workspaceToCode(workspace) || "";
+      setGeneratedCode(code);
+    }
+  }, [activeTab, workspace]);
+
+  // Optionally, define a toolbox for your blocks
+  const toolbox = {
+    kind: "flyoutToolbox",
+    contents: [
+      { kind: "block", type: "move_joint" },
+      { kind: "block", type: "open_gripper" },
+      { kind: "block", type: "close_gripper" },
+      { kind: "block", type: "wait_seconds" },
+      { kind: "block", type: "repeat_times" },
+    ],
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -81,72 +118,63 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="h-[calc(100vh-140px)] flex">
-          {/* Programming Interface (fixed width) */}
-          <div className="w-80 mr-4">
-            <Card className="h-full">
-             
-            </Card>
-          </div>
-          {/* 3D Robot Scene + Controls (flexible) */}
-          <div className="flex-1">
-            <RobotLoader robotName="so-arm101" />
-          </div>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-[calc(100vh-140px)] flex flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
+          <TabsList className="w-full flex mb-2">
+            <TabsTrigger value="blocks" className="flex-1">
+              Blocks
+            </TabsTrigger>
+            <TabsTrigger value="robot" className="flex-1">
+              Robot
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="blocks" className="flex-1 min-h-0">
+            <div className="h-full w-full flex flex-col">
+              <Card className="flex-1 flex flex-col overflow-hidden">
+                <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+                  <BlocklyWorkspace
+                    toolboxConfiguration={toolbox}
+                    initialXml={xml}
+                    className="h-full w-full"
+                    workspaceConfiguration={{
+                      grid: {
+                        spacing: 20,
+                        length: 3,
+                        colour: "#ccc",
+                        snap: true,
+                      },
+                      zoom: {
+                        controls: true,
+                        wheel: true,
+                        startScale: 0.9,
+                        maxScale: 2,
+                        minScale: 0.3,
+                        scaleSpeed: 1.2,
+                      },
+                    }}
+                    onXmlChange={setXml}
+                    onWorkspaceChange={setWorkspace}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="robot" className="flex-1 min-h-0">
+            <div className="h-full w-full flex flex-col">
+              <Card className="flex-1 flex flex-col overflow-hidden">
+                <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+                  <RobotLoader robotName="so-arm101" />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Tips for Kids */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg text-gray-900">
-              🎯 How to Use
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                  1
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">
-                    Connect Your Robot
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Click &quot;Connect Robot&quot; and select your SO-ARM101
-                    from the list
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">
-                    Build Your Program
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Drag and drop blocks from the left panel to create your
-                    robot program
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Run & Watch</h4>
-                  <p className="text-sm text-gray-600">
-                    Press &quot;Run Program&quot; and watch your robot move on
-                    the right!
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
