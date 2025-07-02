@@ -1,6 +1,6 @@
 # SO-ARM Scratch Programming Interface
 
-A kid-friendly visual programming interface for the SO-ARM101 robot arm using block-based programming similar to Scratch.
+A kid-friendly visual programming interface for the SO-ARM101 robot arm using block-based programming similar to Scratch. Inspired by [Bambot](https://bambot.org).
 
 ## Features
 
