@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SO-ARM Scratch Programming Interface
+
+A kid-friendly visual programming interface for the SO-ARM101 robot arm using block-based programming similar to Scratch.
+
+## Features
+
+- 🤖 **3D Robot Visualization**: See your robot in a 3D environment
+- 🧩 **Block-Based Programming**: Drag and drop blocks to program your robot
+- 🔗 **Direct Robot Connection**: Connect to your physical SO-ARM101 via USB/Serial
+- 👶 **Kid-Friendly Interface**: Designed specifically for children to learn programming
+- 💾 **Save/Load Programs**: Export and import your programs as JSON files
+- ⚡ **Real-time Control**: See your program execute on both the virtual and physical robot
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ or Bun
+- A modern web browser (Chrome/Edge recommended for Web Serial API support)
+- SO-ARM101 robot arm (optional - simulation works without hardware)
+
+### Installation
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Start the development server:
+```bash
+bun run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Open your browser and navigate to `http://localhost:3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How to Use
 
-## Learn More
+### 1. Connect Your Robot (Optional)
+- Click the "Connect Robot" button in the top-right corner
+- Select your SO-ARM101 device from the list
+- The status indicator will turn green when connected
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Program Your Robot
+- **Move Joint**: Control individual joints of the robot arm
+- **Rotate Base**: Rotate the robot's base
+- **Wait**: Add delays between movements
+- **Repeat**: Loop actions multiple times
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Build Your Program
+1. Click on blocks in the left palette to add them to your program
+2. Drag blocks to reorder them
+3. Click on a block to edit its parameters in the right panel
+4. Use the X button to remove blocks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run Your Program
+- Click "Run Program" to execute your blocks
+- Watch the 3D simulation and physical robot move together
+- Use "STOP" for emergency stops
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Save and Share
+- Export your programs as JSON files
+- Import previously saved programs
+- Share your creations with friends!
