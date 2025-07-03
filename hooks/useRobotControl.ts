@@ -44,13 +44,9 @@ export function useRobotControl(
   initialJointDetails: JointDetails[],
   urdfInitJointAngles?: { [key: string]: number }
 ) {
-  // 保证 SDK 实例唯一
   const scsServoSDK = useRef(new ScsServoSDK()).current;
   const [isConnected, setIsConnected] = useState(false);
   const [jointDetails, setJointDetails] = useState(initialJointDetails);
-
-  // Recording state
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Joint states
   const [jointStates, setJointStates] = useState<JointState[]>(
@@ -131,7 +127,7 @@ export function useRobotControl(
       alert(error);
       console.error("Failed to connect to the robot:", error);
     }
-  }, [jointStates, jointDetails]);
+  }, [scsServoSDK, jointStates, jointDetails]);
 
   // Disconnect from the robot
   const disconnectRobot = useCallback(async () => {
@@ -157,16 +153,7 @@ export function useRobotControl(
     } catch (error) {
       console.error("Failed to disconnect from the robot:", error);
     }
-  }, [jointDetails]);
-
-  // Clean up recording interval on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-    };
-  }, []);
+  }, [jointDetails, scsServoSDK]);
 
   // Update revolute joint degrees
   const updateJointDegrees = useCallback(
@@ -378,29 +365,4 @@ export function useRobotControl(
     setJointDetails,
     emergencyStop,
   };
-}
-
-export function parseGeneratedCodeToCommands(
-  generatedCode: string,
-  jointDetails: JointDetails[]
-): { servoId: number; value: number }[] {
-  const commands: { servoId: number; value: number }[] = [];
-  const lines = generatedCode.split("\n");
-
-  for (const line of lines) {
-    const match = line.match(/updateJointDegrees\('(\w+)',\s*(\d+)\);/);
-    if (match) {
-      const jointName = match[1];
-      const value = parseFloat(match[2]);
-      const jointDetail = jointDetails.find((j) => j.name === jointName);
-      if (jointDetail) {
-        commands.push({
-          servoId: jointDetail.servoId,
-          value,
-        });
-      }
-    }
-  }
-
-  return commands;
 }

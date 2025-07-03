@@ -7,6 +7,8 @@ import React, {
   ReactNode,
 } from "react";
 import type { BlockDefinition, BlockInstance } from "@/lib/types";
+import { parseBlocksForCommands } from "@/lib/utils";
+import type { UpdateJointsDegrees } from "@/hooks/useRobotControl";
 
 // Context type
 type ScratchContextType = {
@@ -35,7 +37,17 @@ export function useScratch() {
   return ctx;
 }
 
-export function ScratchProvider({ children }: { children: ReactNode }) {
+type ScratchProviderProps = {
+  children: ReactNode;
+  updateJointsDegrees?: UpdateJointsDegrees;
+  isConnected?: boolean;
+};
+
+export function ScratchProvider({
+  children,
+  updateJointsDegrees,
+  isConnected = false,
+}: ScratchProviderProps) {
   const [blocks, setBlocks] = useState<BlockInstance[]>([]);
   const [generatedCode, setGeneratedCode] = useState("");
   const [isRunningCode, setIsRunningCode] = useState(false);
@@ -102,26 +114,50 @@ export function ScratchProvider({ children }: { children: ReactNode }) {
     setGeneratedCode("");
   };
 
-  const handleRunCode = useCallback(() => {
+  const handleRunCode = useCallback(async () => {
     if (blocks.length === 0) {
       alert("Please add blocks to run the code.");
       return;
     }
+
+    if (!updateJointsDegrees) {
+      alert("Robot control functions not available.");
+      return;
+    }
+
     setIsRunningCode(true);
+    setTimeout(() => {}, 2_000); // Simulate loading delay
     try {
-      // Simulate running code
       console.log("Running code...");
-      // Here you would send commands to the robot arm based on the blocks
-      setTimeout(() => {
-        console.log("Code execution completed.");
-        setIsRunningCode(false);
-      }, 2000); // Simulate async operation
+      console.log("Blocks:", blocks);
+      console.log(
+        "UpdateJointsDegrees function available:",
+        !!updateJointsDegrees
+      );
+
+      const commands = parseBlocksForCommands(blocks);
+      console.log("Parsed Commands:", commands);
+
+      // Execute commands (works both with virtual and physical robot)
+      if (commands.length > 0) {
+        if (isConnected) {
+          console.log("Executing commands on physical robot...");
+        } else {
+          console.log("Executing commands on virtual robot only...");
+        }
+        await updateJointsDegrees(commands);
+        console.log("Commands executed successfully!");
+      } else {
+        console.log("No valid commands to execute");
+      }
+
+      setIsRunningCode(false);
     } catch (error) {
       console.error("Error running code:", error);
       alert("Error running code – see console for details.");
       setIsRunningCode(false);
     }
-  }, [blocks]);
+  }, [blocks, updateJointsDegrees, isConnected]);
 
   return (
     <ScratchContext.Provider

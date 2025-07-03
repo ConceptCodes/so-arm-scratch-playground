@@ -73,7 +73,7 @@ export const Header = ({
             </Button>
             <Button
               onClick={handleRunCode}
-              disabled={!blocks.length || isRunningCode || !isConnected}
+              disabled={!blocks.length || isRunningCode}
             >
               {isRunningCode ? (
                 <span className="animate-spin">

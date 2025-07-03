@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { BlockInstance } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -48,4 +49,52 @@ export function radiansToServoPosition(radians: number): number {
  */
 export function degreesToServoPosition(degrees: number): number {
   return Math.min(Math.round((degrees * 4096) / 360), 4096);
+}
+
+// Joint name to servo ID mapping - updated to match robot config
+const JOINT_TO_SERVO_ID: Record<string, number> = {
+  base: 1, // maps to Rotation
+  shoulder: 2, // maps to Pitch
+  elbow: 3, // maps to Elbow
+  wrist_flex: 4, // maps to Wrist_Pitch
+  wrist_roll: 5, // maps to Wrist_Roll
+  gripper: 6, // maps to Jaw
+};
+
+export function parseBlocksForCommands(
+  blocks: BlockInstance[]
+): { servoId: number; value: number }[] {
+  const commands: { servoId: number; value: number }[] = [];
+
+  blocks.forEach((block) => {
+    switch (block.definitionId) {
+      case "move_joint":
+      case "set_joint_position":
+        const joint = block.parameters.joint as string;
+        const angle = (block.parameters.angle ||
+          block.parameters.position) as number;
+        const servoId = JOINT_TO_SERVO_ID[joint];
+
+        if (servoId && typeof angle === "number") {
+          commands.push({
+            servoId,
+            value: angle, // Use degrees directly
+          });
+        }
+        break;
+      case "set_gripper":
+        const position = block.parameters.position as number;
+        const gripperServoId = JOINT_TO_SERVO_ID["gripper"];
+
+        if (gripperServoId && typeof position === "number") {
+          commands.push({
+            servoId: gripperServoId,
+            value: position,
+          });
+        }
+        break;
+    }
+  });
+
+  return commands;
 }

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { Suspense } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Html, useProgress } from "@react-three/drei";
 
-import { JointDetails, RobotScene } from "./RobotScene";
-
-import { useRobotControl } from "@/hooks/useRobotControl";
+import { RobotScene } from "./RobotScene";
+import { useRobot } from "@/context/RobotContext";
 import { robotConfigMap } from "@/lib/robotConfig";
 
 type RobotLoaderProps = {
@@ -24,23 +23,11 @@ function Loader() {
 }
 
 export default function RobotLoader({ robotName }: RobotLoaderProps) {
-  const [jointDetails, setJointDetails] = useState<JointDetails[]>([]);
+  const { jointStates, setJointDetails } = useRobot();
   const config = robotConfigMap[robotName];
-
-  if (!config) {
+  if (!config)
     throw new Error(`Robot configuration for "${robotName}" not found.`);
-  }
-
-  const { urdfUrl, orbitTarget, camera, urdfInitJointAngles } = config;
-
-  const { jointStates, setJointDetails: updateJointDetails } = useRobotControl(
-    jointDetails,
-    urdfInitJointAngles
-  );
-
-  useEffect(() => {
-    updateJointDetails(jointDetails);
-  }, [jointDetails, updateJointDetails]);
+  const { urdfUrl, orbitTarget, camera } = config;
 
   return (
     <>
@@ -50,9 +37,9 @@ export default function RobotLoader({ robotName }: RobotLoaderProps) {
           position: camera.position,
           fov: camera.fov,
         }}
-        onCreated={({ scene }) => {
-          scene.background = new THREE.Color(0x263238);
-        }}
+        onCreated={({ scene }) =>
+          (scene.background = new THREE.Color(0x263238))
+        }
       >
         <Suspense fallback={<Loader />}>
           <RobotScene
