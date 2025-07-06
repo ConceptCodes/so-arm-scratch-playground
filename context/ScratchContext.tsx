@@ -40,12 +40,14 @@ export function useScratch() {
 type ScratchProviderProps = {
   children: ReactNode;
   updateJointsDegrees?: UpdateJointsDegrees;
+  homeRobot?: () => Promise<void>;
   isConnected?: boolean;
 };
 
 export function ScratchProvider({
   children,
   updateJointsDegrees,
+  homeRobot,
   isConnected = false,
 }: ScratchProviderProps) {
   const [blocks, setBlocks] = useState<BlockInstance[]>([]);
@@ -135,20 +137,28 @@ export function ScratchProvider({
         !!updateJointsDegrees
       );
 
-      const commands = parseBlocksForCommands(blocks);
-      console.log("Parsed Commands:", commands);
-
-      // Execute commands (works both with virtual and physical robot)
-      if (commands.length > 0) {
-        if (isConnected) {
-          console.log("Executing commands on physical robot...");
+      // Execute blocks in sequence
+      for (const block of blocks) {
+        if (block.definitionId === "home_robot" && homeRobot) {
+          console.log("Executing home command...");
+          await homeRobot();
+          console.log("Home command executed successfully!");
         } else {
-          console.log("Executing commands on virtual robot only...");
+          // Handle regular movement blocks
+          const commands = parseBlocksForCommands([block]);
+          if (commands.length > 0) {
+            if (isConnected) {
+              console.log("Executing command on physical robot...");
+            } else {
+              console.log("Executing command on virtual robot only...");
+            }
+            await updateJointsDegrees(commands);
+            console.log("Command executed successfully!");
+          }
         }
-        await updateJointsDegrees(commands);
-        console.log("Commands executed successfully!");
-      } else {
-        console.log("No valid commands to execute");
+
+        // Add a small delay between commands for better visualization
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       setIsRunningCode(false);
@@ -157,7 +167,7 @@ export function ScratchProvider({
       alert("Error running code – see console for details.");
       setIsRunningCode(false);
     }
-  }, [blocks, updateJointsDegrees, isConnected]);
+  }, [blocks, updateJointsDegrees, homeRobot, isConnected]);
 
   return (
     <ScratchContext.Provider

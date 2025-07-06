@@ -18,27 +18,23 @@ type JointDetails = {
 
 export type JointState = {
   name: string;
-  servoId?: number;
+  servoId: number;
+  degrees: number;
+  speed?: number;
+  targetDegrees?: number;
+  isMoving?: boolean;
   jointType: "revolute" | "continuous";
   limit?: { lower?: number; upper?: number };
-  degrees?: number | "N/A" | "error";
-  speed?: number | "N/A" | "error";
 };
 
-export type UpdateJointDegrees = (
-  servoId: number,
-  value: number
-) => Promise<void>;
-export type UpdateJointSpeed = (
-  servoId: number,
-  speed: number
-) => Promise<void>;
-export type UpdateJointsDegrees = (
-  updates: { servoId: number; value: number }[]
-) => Promise<void>;
-export type UpdateJointsSpeed = (
-  updates: { servoId: number; speed: number }[]
-) => Promise<void>;
+/* prettier-ignore */
+export type UpdateJointDegrees = (servoId: number, value: number) => Promise<void>;
+/* prettier-ignore */
+export type UpdateJointSpeed = (servoId: number, speed: number) => Promise<void>;
+/* prettier-ignore */
+export type UpdateJointsDegrees = (updates: { servoId: number; value: number }[]) => Promise<void>;
+/* prettier-ignore */
+export type UpdateJointsSpeed = (updates: { servoId: number; speed: number }[]) => Promise<void>;
 
 export function useRobotControl(
   initialJointDetails: JointDetails[],
@@ -47,19 +43,21 @@ export function useRobotControl(
   const scsServoSDK = useRef(new ScsServoSDK()).current;
   const [isConnected, setIsConnected] = useState(false);
   const [jointDetails, setJointDetails] = useState(initialJointDetails);
+  const animationRef = useRef<number | undefined>(undefined);
 
   // Joint states
   const [jointStates, setJointStates] = useState<JointState[]>(
-    jointDetails.map((j, _) => ({
+    jointDetails.map((j) => ({
       jointType: j.jointType,
       degrees:
-        j.jointType === "revolute"
-          ? urdfInitJointAngles?.[j.name] ?? 0
-          : undefined,
+        j.jointType === "revolute" ? urdfInitJointAngles?.[j.name] ?? 0 : 0,
       speed: j.jointType === "continuous" ? 0 : undefined,
-      servoId: j.servoId, // Assign servoId based on index
-      name: j.name, // Map name from JointDetails
-      limit: j.limit, // Map limit from JointDetails
+      servoId: j.servoId,
+      name: j.name,
+      limit: j.limit,
+      targetDegrees:
+        j.jointType === "revolute" ? urdfInitJointAngles?.[j.name] ?? 0 : 0,
+      isMoving: false,
     }))
   );
 
@@ -68,19 +66,75 @@ export function useRobotControl(
 
   useEffect(() => {
     setJointStates(
-      jointDetails.map((j, index) => ({
+      jointDetails.map((j) => ({
         jointType: j.jointType,
         degrees:
-          j.jointType === "revolute"
-            ? urdfInitJointAngles?.[j.name] ?? 0
-            : undefined,
+          j.jointType === "revolute" ? urdfInitJointAngles?.[j.name] ?? 0 : 0,
         speed: j.jointType === "continuous" ? 0 : undefined,
-        servoId: j.servoId, // Assign servoId based on index
-        name: j.name, // Map name from JointDetails
-        limit: j.limit, // Map limit from JointDetails
+        servoId: j.servoId,
+        name: j.name,
+        limit: j.limit,
+        targetDegrees:
+          j.jointType === "revolute" ? urdfInitJointAngles?.[j.name] ?? 0 : 0,
+        isMoving: false,
       }))
     );
   }, [jointDetails, urdfInitJointAngles]);
+
+  // Smooth animation loop for virtual robot
+  useEffect(() => {
+    const animate = () => {
+      setJointStates((prevStates) => {
+        let hasMovement = false;
+        const newStates = prevStates.map((state) => {
+          if (
+            state.isMoving &&
+            state.targetDegrees !== undefined &&
+            state.jointType === "revolute"
+          ) {
+            const diff = state.targetDegrees - state.degrees;
+            const maxStep = 2; // degrees per frame
+
+            if (Math.abs(diff) > 0.1) {
+              hasMovement = true;
+              const step = Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
+              return {
+                ...state,
+                degrees: state.degrees + step,
+              };
+            } else {
+              // Reached target
+              return {
+                ...state,
+                degrees: state.targetDegrees,
+                isMoving: false,
+              };
+            }
+          }
+          return state;
+        });
+
+        if (hasMovement) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+
+        return newStates;
+      });
+    };
+
+    // Start animation if any joint is moving
+    const hasMovingJoints = jointStates.some((state) => state.isMoving);
+    if (hasMovingJoints && !animationRef.current) {
+      animationRef.current = requestAnimationFrame(animate);
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = undefined;
+      }
+    };
+  }, [jointStates]);
 
   // Connect to the robot
   const connectRobot = useCallback(async () => {
@@ -112,9 +166,10 @@ export function useRobotControl(
           );
           initialPos.push(0);
           if (jointDetails[i].jointType === "revolute") {
-            newStates[i].degrees = "error";
+            newStates[i].degrees = 0;
+            newStates[i].isMoving = false;
           } else if (jointDetails[i].jointType === "continuous") {
-            newStates[i].speed = "error";
+            newStates[i].speed = 0;
           }
         }
       }
@@ -161,16 +216,16 @@ export function useRobotControl(
       const newStates = [...jointStates];
       const jointIndex = newStates.findIndex(
         (state) => state.servoId === servoId
-      ); // Find joint by servoId
+      );
 
       if (jointIndex !== -1) {
-        newStates[jointIndex].degrees = value;
+        newStates[jointIndex].targetDegrees = value;
+        newStates[jointIndex].isMoving = true;
 
         if (isConnected) {
           try {
-            // Check if value is within the valid range (0-360 degrees)
             if (value >= 0 && value <= 360) {
-              const servoPosition = degreesToServoPosition(value); // Use utility function
+              const servoPosition = degreesToServoPosition(value);
               await scsServoSDK.writePosition(
                 servoId,
                 Math.round(servoPosition)
@@ -185,14 +240,14 @@ export function useRobotControl(
               `Failed to update servo degrees for joint with servoId ${servoId}:`,
               error
             );
-            newStates[jointIndex].degrees = "error";
+            newStates[jointIndex].isMoving = false;
           }
         }
 
         setJointStates(newStates);
       }
     },
-    [jointStates, isConnected]
+    [jointStates, isConnected, scsServoSDK]
   );
 
   // Update continuous joint speed
@@ -201,27 +256,27 @@ export function useRobotControl(
       const newStates = [...jointStates];
       const jointIndex = newStates.findIndex(
         (state) => state.servoId === servoId
-      ); // Find joint by servoId
+      );
 
       if (jointIndex !== -1) {
         newStates[jointIndex].speed = speed;
 
         if (isConnected) {
           try {
-            await scsServoSDK.writeWheelSpeed(servoId, speed); // Send speed command to the robot
+            await scsServoSDK.writeWheelSpeed(servoId, speed);
           } catch (error) {
             console.error(
               `Failed to update speed for joint with servoId ${servoId}:`,
               error
             );
-            newStates[jointIndex].speed = "error"; // Set speed to "error"
+            newStates[jointIndex].speed = 0;
           }
         }
 
         setJointStates(newStates);
       }
     },
-    [jointStates, isConnected]
+    [jointStates, isConnected, scsServoSDK]
   );
 
   // Update multiple joints' degrees simultaneously
@@ -237,19 +292,20 @@ export function useRobotControl(
       updates.forEach(({ servoId, value }) => {
         const jointIndex = newStates.findIndex(
           (state) => state.servoId === servoId
-        ); // Find joint by servoId
+        );
 
         if (
           jointIndex !== -1 &&
           newStates[jointIndex].jointType === "revolute"
         ) {
-          newStates[jointIndex].degrees = value;
+          newStates[jointIndex].targetDegrees = value;
+          newStates[jointIndex].isMoving = true;
 
           if (isConnected) {
             if (value >= 0 && value <= 360) {
-              const servoPosition = degreesToServoPosition(value); // Use utility function
+              const servoPosition = degreesToServoPosition(value);
               servoPositions[servoId] = Math.round(servoPosition);
-              validUpdates.push({ servoId, value }); // Store valid updates
+              validUpdates.push({ servoId, value });
             } else {
               console.warn(
                 `Value ${value} for servo ${servoId} is out of range (0-360). Skipping update in sync write.`
@@ -261,7 +317,7 @@ export function useRobotControl(
 
       if (isConnected && Object.keys(servoPositions).length > 0) {
         try {
-          await scsServoSDK.syncWritePositions(servoPositions); // Use syncWritePositions with only valid positions
+          await scsServoSDK.syncWritePositions(servoPositions);
         } catch (error) {
           console.error("Failed to update multiple servo degrees:", error);
           validUpdates.forEach(({ servoId }) => {
@@ -269,7 +325,7 @@ export function useRobotControl(
               (state) => state.servoId === servoId
             );
             if (jointIndex !== -1) {
-              newStates[jointIndex].degrees = "error";
+              newStates[jointIndex].isMoving = false;
             }
           });
         }
@@ -277,7 +333,7 @@ export function useRobotControl(
 
       setJointStates(newStates);
     },
-    [jointStates, isConnected]
+    [jointStates, isConnected, scsServoSDK]
   );
 
   // Update multiple joints' speed simultaneously
@@ -310,7 +366,7 @@ export function useRobotControl(
               (state) => state.servoId === servoId
             );
             if (jointIndex !== -1) {
-              newStates[jointIndex].speed = "error";
+              newStates[jointIndex].speed = 0;
             }
           });
         }
@@ -318,8 +374,22 @@ export function useRobotControl(
 
       setJointStates(newStates);
     },
-    [jointStates, isConnected]
+    [jointStates, isConnected, scsServoSDK]
   );
+
+  // Home the robot - move all joints to their initial positions from URDF
+  const homeRobot = useCallback(async () => {
+    const homeUpdates = jointDetails.map((joint) => {
+      const homeAngle = urdfInitJointAngles?.[joint.name] ?? 0;
+      return {
+        servoId: joint.servoId,
+        value: homeAngle,
+      };
+    });
+
+    console.log("Homing robot to URDF initial positions:", homeUpdates);
+    await updateJointsDegrees(homeUpdates);
+  }, [jointDetails, urdfInitJointAngles, updateJointsDegrees]);
 
   const emergencyStop = useCallback(async () => {
     if (isConnected) {
@@ -340,7 +410,10 @@ export function useRobotControl(
           ...state,
           degrees:
             state.jointType === "revolute" ? initialPositions[idx] ?? 0 : 0,
-          speed: state.jointType === "continuous" ? 0 : 0,
+          speed: state.jointType === "continuous" ? 0 : undefined,
+          targetDegrees:
+            state.jointType === "revolute" ? initialPositions[idx] ?? 0 : 0,
+          isMoving: false,
         }));
         setJointStates(newStates);
         console.log("Emergency stop executed successfully.");
@@ -363,6 +436,7 @@ export function useRobotControl(
     updateJointSpeed,
     updateJointsSpeed,
     setJointDetails,
+    homeRobot,
     emergencyStop,
   };
 }

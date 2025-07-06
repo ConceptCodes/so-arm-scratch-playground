@@ -39,7 +39,6 @@ export class BlockRegistry {
   }
 }
 
-// Initialize default categories
 const registry = BlockRegistry.getInstance();
 
 registry.registerCategory({
@@ -54,13 +53,6 @@ registry.registerCategory({
   name: "Control",
   color: "hsl(38, 92%, 50%)",
   icon: "🔄",
-});
-
-registry.registerCategory({
-  id: "sensing",
-  name: "Sensing",
-  color: "hsl(204, 86%, 53%)",
-  icon: "👁️",
 });
 
 registry.registerCategory({

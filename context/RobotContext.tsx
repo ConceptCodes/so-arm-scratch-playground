@@ -10,6 +10,7 @@ type RobotContextType = {
   connectRobot: () => Promise<void>;
   disconnectRobot: () => Promise<void>;
   emergencyStop: () => Promise<void>;
+  homeRobot: () => Promise<void>;
   jointStates: JointState[];
   setJointDetails: (details: JointDetails[]) => void;
   updateJointsDegrees: (
@@ -36,6 +37,7 @@ export function RobotProvider({
     connectRobot,
     disconnectRobot,
     emergencyStop,
+    homeRobot,
     jointStates,
     setJointDetails,
     updateJointsDegrees,
@@ -48,6 +50,7 @@ export function RobotProvider({
         connectRobot,
         disconnectRobot,
         emergencyStop,
+        homeRobot,
         jointStates,
         setJointDetails,
         updateJointsDegrees,

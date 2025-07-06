@@ -64,6 +64,17 @@ const defaultBlocks: BlockDefinition[] = [
     codeTemplate: "updateJointDegrees('{{joint}}', {{position}});",
   },
 
+  // System blocks
+  {
+    id: "home_robot",
+    category: "motion",
+    name: "home robot",
+    color: "hsl(217, 91%, 60%)",
+    shape: "command",
+    parameters: [],
+    codeTemplate: "homeRobot();",
+  },
+
   // Gripper blocks
   {
     id: "open_gripper",

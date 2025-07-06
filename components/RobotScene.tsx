@@ -62,7 +62,8 @@ export function RobotScene({
               )
               .map((joint) => ({
                 name: joint.name,
-                servoId: robotConfigMap[robotName]?.jointNameIdMap?.[joint.name] ?? -1,
+                servoId:
+                  robotConfigMap[robotName]?.jointNameIdMap?.[joint.name] ?? -1,
                 limit: {
                   lower:
                     joint.limit.lower === undefined
@@ -90,13 +91,12 @@ export function RobotScene({
     );
   }, [robotName, urdfUrl, setJointDetails, scene]);
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (robotRef.current && robotRef.current.joints) {
       jointStates.forEach((state) => {
         const jointObj = robotRef.current!.joints[state.name];
         if (jointObj) {
           if (
-            state.degrees !== undefined &&
             typeof state.degrees === "number" &&
             jointObj.jointType !== "continuous"
           ) {
@@ -107,7 +107,7 @@ export function RobotScene({
             jointObj.jointType === "continuous"
           ) {
             const currentAngle = Number(jointObj.angle) || 0;
-            jointObj.setJointValue(currentAngle + (state.speed * delta) / 500);
+            jointObj.setJointValue(currentAngle + (state.speed * 0.016) / 500);
           }
         }
       });

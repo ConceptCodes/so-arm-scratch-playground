@@ -71,6 +71,7 @@ function HomeContentWrapper() {
     isConnected,
     disconnectRobot,
     emergencyStop,
+    homeRobot,
     updateJointsDegrees,
   } = useRobot();
   const [activeTab, setActiveTab] = useState<"blocks" | "robot">("blocks");
@@ -78,6 +79,7 @@ function HomeContentWrapper() {
   return (
     <ScratchProvider
       updateJointsDegrees={updateJointsDegrees}
+      homeRobot={homeRobot}
       isConnected={isConnected}
     >
       <PageContent

@@ -5,7 +5,6 @@ type CameraSettings = {
 
 type CompoundMovement = {
   name: string;
-  // keys: string[]; // keys that trigger this movement
   primaryJoint: number; // the joint controlled by the key
   // Optional formula for calculating deltaPrimary, can use primary, dependent, etc.
   primaryFormula?: string;
@@ -24,9 +23,6 @@ export type RobotConfig = {
   urdfUrl: string;
   camera: CameraSettings;
   orbitTarget: [number, number, number];
-  keyboardControlMap?: {
-    [key: string]: string[];
-  };
   jointNameIdMap?: {
     [key: string]: number;
   };
@@ -42,14 +38,6 @@ export const robotConfigMap: { [key: string]: RobotConfig } = {
     urdfUrl: "/assets/urdf/so101.urdf",
     camera: { position: [-30, 10, 30], fov: 12 },
     orbitTarget: [1, 2, 0],
-    // keyboardControlMap: {
-    //   1: ["1", "q"],
-    //   2: ["2", "w"],
-    //   3: ["3", "e"],
-    //   4: ["4", "r"],
-    //   5: ["5", "t"],
-    //   6: ["6", "y"],
-    // },
     // map between joint names in URDF and servo IDs
     jointNameIdMap: {
       Rotation: 1,
@@ -71,7 +59,6 @@ export const robotConfigMap: { [key: string]: RobotConfig } = {
       // Jaw compound movements
       {
         name: "Jaw down & up",
-        // keys: ["8", "i"],
         primaryJoint: 2,
         primaryFormula: "primary < 100 ? 1 : -1", // Example: sign depends on primary and dependent
         dependents: [
@@ -89,7 +76,6 @@ export const robotConfigMap: { [key: string]: RobotConfig } = {
       },
       {
         name: "Jaw backward & forward",
-        // keys: ["o", "u"],
         primaryJoint: 2,
         primaryFormula: "1",
         dependents: [
